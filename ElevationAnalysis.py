@@ -10,27 +10,34 @@ import plotly.express as px
 import plotly.io as pio
 
 #slopeless csv address to analyze
-SLOPELESS_CSV_ADDRESS = r"D:\SRTM\0360ElevationData\0360_TB20S_ELEVATION.csv"
+SLOPELESS_CSV_ADDRESS = ""#r"D:\SRTM\0360ElevationData\0360_TB20S_ELEVATION.csv"
 
 #post calculation csv address (FOR SECOND-STAGE USAGE)
-POSTCALC_CSV_ADDRESS = r"D:\Elevation-Visualizer\20260717_082854_SlopeOutput.csv"
+POST_SLOPE_CSV_ADDRESS = r"D:\Elevation-Visualizer\20260717_082854_SlopeOutput.csv"
 
 #config
 TIMESTAMP_COLUMN = 0
 LON_COLUMN = 1
 LAT_COLUMN = 2
 ELEVATION_COLUMN = 3
+LINEAR_DISTS_COLUMN = 4 #doesn't matter for slopeless CSVs
+SLOPE_COLUMN = 5 #doesn't matter for slopeless CSVs
+
 SLOPE_AVERAGE_WINDOW_REVERSE = 2
 SLOPE_AVERAGE_WINDOW_FORWARD = 2
 
-#Output Options
+#Output Options for Slopeless (Ignored for Post Slope)
 OUTPUT_REBUILT_CSV = True
 OUTPUT_SLOPE_HISTOGRAM = True
 OUTPUT_ELEVATION_HISTOGRAM = True
-OUTPUT_SLOPE_STD_DEV = True
-OUTPUT_ELEVATION_STD_DEV = True
 OUTPUT_INTERACTIVE_MAP = True
 DEBUG_OUTPUTS = True
+
+#Output Options for both Slopeless and Post Slope
+OUTPUT_SLOPE_STD_DEV = True
+OUTPUT_ELEVATION_STD_DEV = True
+OUTPUT_ELEVATION_AVG = True
+OUTPUT_SLOPE_AVG = True
 
 #debug
 HAVERDISTS_LENGTH = 0
@@ -65,7 +72,7 @@ def saveTimestamps(csv_filename):
                 try:
                     
                     timeList.append(str(row[TIMESTAMP_COLUMN]))
-                    print("appending " , str(row[TIMESTAMP_COLUMN]), "   PROGRESS:" , timeProg)
+                    print("TIMESTAMP appended: " , str(row[TIMESTAMP_COLUMN]), "   PROGRESS: " , timeProg)
                     timeProg +=1
 
                 except ValueError:
@@ -93,7 +100,7 @@ def saveElevations(csv_filename):
                 try:
                     
                     elevList.append(float(row[ELEVATION_COLUMN]))
-                    print("appending " , float(row[ELEVATION_COLUMN]), "   PROGRESS:" , elevProg)
+                    print("ELEVATION appended: " , float(row[ELEVATION_COLUMN]), "   PROGRESS:" , elevProg)
                     elevProg +=1
 
                 except ValueError:
@@ -150,6 +157,32 @@ def saveLats(csv_filename):
                 coordProg+=1
     return lats
 
+
+def saveSlopes(csv_filename):
+    slopes = []
+    with open(csv_filename, 'r', newline = '', encoding = 'utf-8') as f:
+
+        reader = csv.reader(f)
+
+        #progress indicator
+        slopeProg = 0
+
+        #skip header
+        next(reader)
+
+        for row in reader:
+
+            if len(row)>=4:
+
+                slopes.append(float(row[SLOPE_COLUMN]))
+
+                print("SLOPE appended " , float(row[SLOPE_COLUMN]), " PROGRESS: " , slopeProg)
+
+                slopeProg+=1
+    return slopes
+
+
+
 #find standard deviation of list
 def findStdDev(listOfSomething):
     std_dev = statistics.pstdev(listOfSomething)
@@ -170,7 +203,7 @@ def findHaversines(lons, lats):
 
         if (i<len(lons)):
             haverDists.append(haversine(lats[i-1], lons[i-1], lats[i],lons[i]))
-            print("haversine " , f"{haversine(lats[i-1], lons[i-1], lats[i],lons[i])}")
+            print("HAVERSINE appended: " , haverDists[i])
             i+=1
 
     #return list of distances from previous point
@@ -182,7 +215,7 @@ def findElevDiffs(elevations):
     elevDiffs.append(0)
     for i in range (1, len(elevations)):
         elevDiffs.append(elevations[i] - elevations [i-1])
-        print("appended ", elevations[i] - elevations [i-1])
+        print("ELEV DIFF appended: ", elevDiffs[i])
     print("length: ", len(elevDiffs))
     return elevDiffs
 
@@ -231,17 +264,22 @@ def findSlopes(dists, elevDiffs):
         print("the lists are different length!")
     return slopes
 
-TIMESTAMPS = saveTimestamps(SLOPELESS_CSV_ADDRESS)
-ELEVATIONS = saveElevations(SLOPELESS_CSV_ADDRESS)
-LONGITUDES = saveLons(SLOPELESS_CSV_ADDRESS)
-LATITUDES = saveLats(SLOPELESS_CSV_ADDRESS)
-LINEAR_DISTS = findHaversines(LONGITUDES, LATITUDES)
-ELEV_DIFFS = findElevDiffs(ELEVATIONS)
-SLOPES = findSlopes(LINEAR_DISTS, ELEV_DIFFS)
+def findAvg(listOfSomething):
+    total = 0
+    for val in listOfSomething:
+        total = total + val
+    avg = total/len(listOfSomething)
+    return avg
 
-
-#combined dataframe
-comboFrame = pd.DataFrame({
+if (SLOPELESS_CSV_ADDRESS != "" and POST_SLOPE_CSV_ADDRESS == ""):
+    TIMESTAMPS = saveTimestamps(SLOPELESS_CSV_ADDRESS)
+    ELEVATIONS = saveElevations(SLOPELESS_CSV_ADDRESS)
+    LONGITUDES = saveLons(SLOPELESS_CSV_ADDRESS)
+    LATITUDES = saveLats(SLOPELESS_CSV_ADDRESS)
+    LINEAR_DISTS = findHaversines(LONGITUDES, LATITUDES)
+    ELEV_DIFFS = findElevDiffs(ELEVATIONS)
+    SLOPES = findSlopes(LINEAR_DISTS, ELEV_DIFFS)
+    comboFrame = pd.DataFrame({
         "Timestamp" : TIMESTAMPS,
         "Latitude" : LATITUDES,
         "Longitude" : LONGITUDES,
@@ -250,33 +288,52 @@ comboFrame = pd.DataFrame({
         "Slope" : SLOPES
     })
 
+    if OUTPUT_REBUILT_CSV:
+        with open("output.csv", "w", newline = "") as f:
+            writer = csv.writer(f)
+            writer.writerow(["Timestamp", "Latitude", "Longitude", "Elevation", "LinearDistance", "Slope"])
+
+        
+        currentTime = time.datetime.now().strftime("%Y%m%d_%H%M%S")
+        outputName = f"{currentTime}_SlopeOutput.csv"
+        comboFrame.to_csv(outputName, index = False)
+
+elif (POST_SLOPE_CSV_ADDRESS != "" and SLOPELESS_CSV_ADDRESS == ""):
+    ELEVATIONS = saveElevations(POST_SLOPE_CSV_ADDRESS)
+    SLOPES = saveSlopes(POST_SLOPE_CSV_ADDRESS)
+
+else:
+    raise ValueError("Please ensure there is only one file to analyze.")
 
 
+if OUTPUT_ELEVATION_STD_DEV:
+    elevationStdDev = findStdDev(ELEVATIONS)
+    print("Elevation Std Dev: ", elevationStdDev)
+
+if OUTPUT_ELEVATION_AVG:
+    elevationAvg = findAvg(ELEVATIONS)
+    print("Elevation Avg: ", elevationAvg)
+
+if OUTPUT_SLOPE_STD_DEV:
+    slopeStdDev = findStdDev(SLOPES)
+    print("Slopes Std Dev: ", slopeStdDev)
+
+if OUTPUT_SLOPE_AVG:
+    slopeAvg = findAvg(SLOPES)
+    print("Slopes Avg: ", slopeAvg)
 
 if DEBUG_OUTPUTS:
-    print("lengths")
-    print(len(ELEVATIONS))
-    print(len(LATITUDES))
-    print(len(LONGITUDES))
-    print(len(TIMESTAMPS))
-    print(len(SLOPES))
+    print("elevations length: " ,len(ELEVATIONS))
+    print("lats length: " ,len(LATITUDES))
+    print("lons length: " ,len(LONGITUDES))
+    print("timestamps length: " ,len(TIMESTAMPS))
+    print("slopes length: " ,len(SLOPES))
     print("elevation diffs length: " , f"{len(ELEV_DIFFS)}")
     print("linear dists length: " ,f"{len(LINEAR_DISTS)}")
 
 
-
-
-if OUTPUT_REBUILT_CSV:
-    with open("output.csv", "w", newline = "") as f:
-        writer = csv.writer(f)
-        writer.writerow(["Timestamp", "Latitude", "Longitude", "Elevation", "LinearDistance", "Slope"])
-
-    
-    currentTime = time.datetime.now().strftime("%Y%m%d_%H%M%S")
-    outputName = f"{currentTime}_SlopeOutput.csv"
-    comboFrame.to_csv(outputName, index = False)
-
 if OUTPUT_SLOPE_HISTOGRAM:
+
     currentTime = time.datetime.now().strftime("%Y%m%d_%H%M%S")
     histoFrame = pd.DataFrame({
         "Slope": SLOPES
@@ -303,16 +360,28 @@ if OUTPUT_ELEVATION_HISTOGRAM:
     plt.savefig(f"{currentTime}__Elevation_Histogram_Output.png")
     plt.close()
 
-if OUTPUT_ELEVATION_STD_DEV:
-    elevationStdDev = findStdDev(ELEVATIONS)
-    print("Elevation Std Dev: ", elevationStdDev)
-
-if OUTPUT_SLOPE_STD_DEV:
-    slopeStdDev = findStdDev(SLOPES)
-    print("Slopes Std Dev: ", slopeStdDev)
 
 if OUTPUT_INTERACTIVE_MAP:
     
+    if (SLOPELESS_CSV_ADDRESS == ""): #if we're processing the POST SLOPE CSV
+        saveLats(POST_SLOPE_CSV_ADDRESS)
+        saveLons(POST_SLOPE_CSV_ADDRESS)
+        comboFrame = pd.DataFrame({
+        "Latitude" : LATITUDES,
+        "Longitude" : LONGITUDES,
+        "Elevation" : ELEVATIONS,
+        "Slope" : SLOPES
+    })
+        
+    else:
+        comboFrame = pd.DataFrame({
+        "Timestamp" : TIMESTAMPS,
+        "Latitude" : LATITUDES,
+        "Longitude" : LONGITUDES,
+        "Elevation" : ELEVATIONS,
+        "Linear Distance" : LINEAR_DISTS,
+        "Slope" : SLOPES
+    })
     pio.renderers.default = "browser"
 
     testFrame = comboFrame.iloc[::20]
@@ -335,8 +404,7 @@ if OUTPUT_INTERACTIVE_MAP:
 
     fig.show()
 
-
-
+#universal options
 
     
 
