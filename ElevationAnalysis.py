@@ -9,8 +9,11 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.io as pio
 
-#csv address
-CSV_NAME = r"D:\SRTM\0360ElevationData\0360_TB20S_ELEVATION.csv"
+#slopeless csv address to analyze
+SLOPELESS_CSV_ADDRESS = r"D:\SRTM\0360ElevationData\0360_TB20S_ELEVATION.csv"
+
+#post calculation csv address (FOR SECOND-STAGE USAGE)
+POSTCALC_CSV_ADDRESS = r"D:\Elevation-Visualizer\20260717_082854_SlopeOutput.csv"
 
 #config
 TIMESTAMP_COLUMN = 0
@@ -228,10 +231,10 @@ def findSlopes(dists, elevDiffs):
         print("the lists are different length!")
     return slopes
 
-TIMESTAMPS = saveTimestamps(CSV_NAME)
-ELEVATIONS = saveElevations(CSV_NAME)
-LONGITUDES = saveLons(CSV_NAME)
-LATITUDES = saveLats(CSV_NAME)
+TIMESTAMPS = saveTimestamps(SLOPELESS_CSV_ADDRESS)
+ELEVATIONS = saveElevations(SLOPELESS_CSV_ADDRESS)
+LONGITUDES = saveLons(SLOPELESS_CSV_ADDRESS)
+LATITUDES = saveLats(SLOPELESS_CSV_ADDRESS)
 LINEAR_DISTS = findHaversines(LONGITUDES, LATITUDES)
 ELEV_DIFFS = findElevDiffs(ELEVATIONS)
 SLOPES = findSlopes(LINEAR_DISTS, ELEV_DIFFS)
