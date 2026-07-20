@@ -10,10 +10,10 @@ import plotly.express as px
 import plotly.io as pio
 
 #slopeless csv address to analyze
-SLOPELESS_CSV_ADDRESS = ""#r"D:\SRTM\0360ElevationData\0360_TB20S_ELEVATION.csv"
+SLOPELESS_CSV_ADDRESS = r"D:\SRTM\8899ElevationData\8899_TB20S_ELEVATION_ORDERED.csv"
 
 #post calculation csv address (FOR SECOND-STAGE USAGE)
-POST_SLOPE_CSV_ADDRESS = r"D:\Elevation-Visualizer\20260717_082854_SlopeOutput.csv"
+POST_SLOPE_CSV_ADDRESS = r""
 
 #config
 TIMESTAMP_COLUMN = 0
@@ -25,20 +25,23 @@ SLOPE_COLUMN = 5 #doesn't matter for slopeless CSVs
 
 SLOPE_AVERAGE_WINDOW_REVERSE = 2
 SLOPE_AVERAGE_WINDOW_FORWARD = 2
-
-#Output Options for Slopeless (Ignored for Post Slope)
-OUTPUT_REBUILT_CSV = True
+#Output Options
 OUTPUT_SLOPE_HISTOGRAM = True
 OUTPUT_ELEVATION_HISTOGRAM = True
 OUTPUT_INTERACTIVE_MAP = True
 DEBUG_OUTPUTS = True
+
+#Output Options for Slopeless (Ignored for Post Slope)
+OUTPUT_REBUILT_CSV = True
+
+
 
 #Output Options for both Slopeless and Post Slope
 OUTPUT_SLOPE_STD_DEV = True
 OUTPUT_ELEVATION_STD_DEV = True
 OUTPUT_ELEVATION_AVG = True
 OUTPUT_SLOPE_AVG = True
-
+MAP_SIMPLIFICATION = 20 #row skip for map
 #debug
 HAVERDISTS_LENGTH = 0
 ELEVDIFFS_LENGTH = 0
@@ -72,7 +75,9 @@ def saveTimestamps(csv_filename):
                 try:
                     
                     timeList.append(str(row[TIMESTAMP_COLUMN]))
-                    print("TIMESTAMP appended: " , str(row[TIMESTAMP_COLUMN]), "   PROGRESS: " , timeProg)
+                    #print("TIMESTAMP appended: " , str(row[TIMESTAMP_COLUMN]), "   PROGRESS: " , timeProg)
+                    if timeProg % 100000 == 0:
+                        print(f"TIMESTAMPS RETRIEVED: {timeProg:,}")
                     timeProg +=1
 
                 except ValueError:
@@ -100,7 +105,9 @@ def saveElevations(csv_filename):
                 try:
                     
                     elevList.append(float(row[ELEVATION_COLUMN]))
-                    print("ELEVATION appended: " , float(row[ELEVATION_COLUMN]), "   PROGRESS:" , elevProg)
+                    #print("ELEVATION appended: " , float(row[ELEVATION_COLUMN]), "   PROGRESS:" , elevProg)
+                    if elevProg % 100000 == 0:
+                        print(f"ELEVATIONS RETRIEVED: {elevProg:,}")
                     elevProg +=1
 
                 except ValueError:
@@ -129,8 +136,9 @@ def saveLons(csv_filename):
 
                 lons.append(float(row[LON_COLUMN]))
 
-                print("LONS appended " , float(row[LON_COLUMN]))
-
+                #print("LONS appended " , float(row[LON_COLUMN]))
+                if coordProg % 100000 == 0:
+                    print(f"LONS RETRIEVED: {coordProg:,}")
                 coordProg+=1
     return lons
 
@@ -152,8 +160,9 @@ def saveLats(csv_filename):
 
                 lats.append(float(row[LAT_COLUMN]))
 
-                print("LATS appended " , float(row[LAT_COLUMN]), coordProg)
-
+                #print("LATS appended " , float(row[LAT_COLUMN]), coordProg)
+                if coordProg % 100000 == 0:
+                    print(f"LATS RETRIEVED: {coordProg:,}")
                 coordProg+=1
     return lats
 
@@ -175,9 +184,13 @@ def saveSlopes(csv_filename):
             if len(row)>=4:
 
                 slopes.append(float(row[SLOPE_COLUMN]))
-
-                print("SLOPE appended " , float(row[SLOPE_COLUMN]), " PROGRESS: " , slopeProg)
-
+                if slopes[slopeProg] >= 1:
+                    print("SLOPE GREATER THAN 1: ", slopes[slopeProg])
+                elif slopes[slopeProg] <= -1:
+                    print("SLOPE LESS THAN -1: ", slopes[slopeProg])
+                #print("SLOPE appended " , float(row[SLOPE_COLUMN]), " PROGRESS: " , slopeProg)
+                if slopeProg % 100000 == 0:
+                    print(f"SLOPES RETRIEVED: {slopeProg:,}")
                 slopeProg+=1
     return slopes
 
@@ -203,7 +216,9 @@ def findHaversines(lons, lats):
 
         if (i<len(lons)):
             haverDists.append(haversine(lats[i-1], lons[i-1], lats[i],lons[i]))
-            print("HAVERSINE appended: " , haverDists[i])
+            #print("HAVERSINE appended: " , haverDists[i])
+            if i % 100000 == 0:
+                print(f"HAVERSINES found: {i:,}")
             i+=1
 
     #return list of distances from previous point
@@ -215,7 +230,9 @@ def findElevDiffs(elevations):
     elevDiffs.append(0)
     for i in range (1, len(elevations)):
         elevDiffs.append(elevations[i] - elevations [i-1])
-        print("ELEV DIFF appended: ", elevDiffs[i])
+        #print("ELEV DIFF appended: ", elevDiffs[i])
+        if i % 100000 == 0:
+            print(f"ELEV DIFFS found: {i:,}")
     print("length: ", len(elevDiffs))
     return elevDiffs
 
@@ -258,7 +275,10 @@ def findSlopes(dists, elevDiffs):
             if dists[i] == 0:
                 slopes.append(0)
             else:
-                print("SLOPE ", elevDiffs[i]/dists[i])
+                #print("SLOPE ", elevDiffs[i]/dists[i])
+                if i % 100000 == 0:
+                    print(f"Slopes found: {i:,}")
+
                 slopes.append(elevDiffs[i]/dists[i])
     else:
         print("the lists are different length!")
@@ -281,8 +301,8 @@ if (SLOPELESS_CSV_ADDRESS != "" and POST_SLOPE_CSV_ADDRESS == ""):
     SLOPES = findSlopes(LINEAR_DISTS, ELEV_DIFFS)
     comboFrame = pd.DataFrame({
         "Timestamp" : TIMESTAMPS,
-        "Latitude" : LATITUDES,
         "Longitude" : LONGITUDES,
+        "Latitude" : LATITUDES,
         "Elevation" : ELEVATIONS,
         "Linear Distance" : LINEAR_DISTS,
         "Slope" : SLOPES
@@ -291,7 +311,7 @@ if (SLOPELESS_CSV_ADDRESS != "" and POST_SLOPE_CSV_ADDRESS == ""):
     if OUTPUT_REBUILT_CSV:
         with open("output.csv", "w", newline = "") as f:
             writer = csv.writer(f)
-            writer.writerow(["Timestamp", "Latitude", "Longitude", "Elevation", "LinearDistance", "Slope"])
+            writer.writerow(["Timestamp", "Longitude", "Latitude",  "Elevation", "LinearDistance", "Slope"])
 
         
         currentTime = time.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -324,8 +344,8 @@ if OUTPUT_SLOPE_AVG:
 
 if DEBUG_OUTPUTS:
     print("elevations length: " ,len(ELEVATIONS))
-    print("lats length: " ,len(LATITUDES))
     print("lons length: " ,len(LONGITUDES))
+    print("lats length: " ,len(LATITUDES))
     print("timestamps length: " ,len(TIMESTAMPS))
     print("slopes length: " ,len(SLOPES))
     print("elevation diffs length: " , f"{len(ELEV_DIFFS)}")
@@ -364,11 +384,12 @@ if OUTPUT_ELEVATION_HISTOGRAM:
 if OUTPUT_INTERACTIVE_MAP:
     
     if (SLOPELESS_CSV_ADDRESS == ""): #if we're processing the POST SLOPE CSV
-        saveLats(POST_SLOPE_CSV_ADDRESS)
-        saveLons(POST_SLOPE_CSV_ADDRESS)
+        
+        LONGITUDES = saveLons(POST_SLOPE_CSV_ADDRESS)
+        LATITUDES = saveLats(POST_SLOPE_CSV_ADDRESS)
         comboFrame = pd.DataFrame({
-        "Latitude" : LATITUDES,
         "Longitude" : LONGITUDES,
+        "Latitude" : LATITUDES,
         "Elevation" : ELEVATIONS,
         "Slope" : SLOPES
     })
@@ -376,23 +397,23 @@ if OUTPUT_INTERACTIVE_MAP:
     else:
         comboFrame = pd.DataFrame({
         "Timestamp" : TIMESTAMPS,
-        "Latitude" : LATITUDES,
         "Longitude" : LONGITUDES,
+        "Latitude" : LATITUDES,
         "Elevation" : ELEVATIONS,
         "Linear Distance" : LINEAR_DISTS,
         "Slope" : SLOPES
     })
     pio.renderers.default = "browser"
 
-    testFrame = comboFrame.iloc[::20]
+    testFrame = comboFrame.iloc[::MAP_SIMPLIFICATION]
 
     print(testFrame.shape)
     print(testFrame.head())
 
     fig = px.scatter_mapbox(
         testFrame,
-        lat="Latitude",
         lon="Longitude",
+        lat="Latitude",
         color="Elevation",
         hover_data=["Elevation", "Slope"],
         zoom=12
