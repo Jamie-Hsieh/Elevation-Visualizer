@@ -10,10 +10,10 @@ import plotly.express as px
 import plotly.io as pio
 
 #slopeless csv address to analyze
-SLOPELESS_CSV_ADDRESS = r"D:\SRTM\8899ElevationData\8899_TB20S_ELEVATION_ORDERED.csv"
+SLOPELESS_CSV_ADDRESS = r""
 
 #post calculation csv address (FOR SECOND-STAGE USAGE)
-POST_SLOPE_CSV_ADDRESS = r""
+POST_SLOPE_CSV_ADDRESS = r"D:\SRTM\8899ElevationData\8899_TB1S_SLOPE_LIN_SMOOTH_15M.csv"
 
 #config
 TIMESTAMP_COLUMN = 0

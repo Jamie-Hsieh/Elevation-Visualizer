@@ -10,7 +10,7 @@ from rasterio.transform import rowcol
 # USER SETTINGS
 # =====================================================
 
-CSV_PATH = r"D:\SRTM\8899ElevationData\8899_tb1s_LON_LAT_ORDERED.csv"
+CSV_PATH = r"D:\SRTM\8899ElevationData\8899_tb5s.csv"
 
 TIF_PATH = r"D:\SRTM\8899ElevationData\merged_srtm.tif"
 
